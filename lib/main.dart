@@ -1,17 +1,12 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'dart:developer';
-
 import 'package:anime/cubit/home_cubit.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:webview_windows/webview_windows.dart';
-import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Must add this line.
-  await windowManager.ensureInitialized();
   runApp(const MainApp());
 }
 
@@ -31,43 +26,14 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> with WidgetsBindingObserver {
+class _HomeState extends State<Home> {
   final HomeCubit _cubit = HomeCubit();
   bool inFullScreen = false;
 
   @override
   void initState() {
-    WidgetsBinding.instance.addObserver(this);
-    ServicesBinding.instance.keyboard.addHandler(_onkey);
     _cubit.init();
     super.initState();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    log('state = $state');
-  }
-
-  Future setFullscreen() async {
-    var isFullScreen = await WindowManager.instance.isFullScreen();
-    if (isFullScreen) {
-      inFullScreen = false;
-      await windowManager.setFullScreen(false);
-      if (mounted) setState(() {});
-      return;
-    } else {
-      inFullScreen = true;
-      await windowManager.setFullScreen(true);
-      if (mounted) setState(() {});
-      return;
-    }
-  }
-
-  bool _onkey(KeyEvent event) {
-    if (event.logicalKey == LogicalKeyboardKey.f11 && event is KeyDownEvent) {
-      setFullscreen();
-    }
-    return false;
   }
 
   final TextEditingController _controller = TextEditingController();
@@ -87,19 +53,22 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         },
         builder: (context, state) {
           if (state is HomeInitial) {
-            return Center(
-              child: Card(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  width: 400,
-                  child: TextFormField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Digite o nome do anime',
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Card(
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    width: 400,
+                    child: TextFormField(
+                      controller: _controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Digite o nome do anime',
+                      ),
+                      onFieldSubmitted: (value) async {
+                        await _cubit.search(value);
+                      },
                     ),
-                    onFieldSubmitted: (value) async {
-                      await _cubit.search(value);
-                    },
                   ),
                 ),
               ),
@@ -109,11 +78,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             return Column(
               children: [
                 AppBar(
-                    title: const Text('Resultados'),
-                    leading: IconButton(
-                      onPressed: () => _cubit.toInitial(),
-                      icon: const Icon(Icons.arrow_back),
-                    )),
+                  title: const Text('Resultados'),
+                  leading: IconButton(
+                    onPressed: () => _cubit.toInitial(),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Wrap(
@@ -152,13 +122,22 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                             .map(
                               (e) => GestureDetector(
                                 onTap: () => _cubit.watch(e),
-                                child: Card(
+                                child: Container(
+                                  width: 190,
+                                  height: 190,
+                                  margin: const EdgeInsets.all(5),
                                   color: list.contains(e.id.toString()) ? Colors.grey.shade400 : Colors.white,
                                   child: Column(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Image.network(e.img),
-                                      Text(e.name),
+                                      Image.network(
+                                        e.img,
+                                        fit: BoxFit.cover,
+                                        height: 155,
+                                      ),
+                                      AutoSizeText(
+                                        e.name,
+                                        maxLines: 2,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -169,42 +148,19 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-                SizedBox(
-                  height: 50,
-                  child: Row(children: [
-                    ...state.info.paginas
-                        .map(
-                          (e) => TextButton(
+                Wrap(children: [
+                  ...state.info.paginas
+                      .map(
+                        (e) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: FilledButton(
                             onPressed: () => _cubit.selectPage(e),
                             child: Text(e.toString()),
                           ),
-                        )
-                        .toList(),
-                  ]),
-                )
-              ],
-            );
-          }
-          if (state is HomeWatch) {
-            log('state is HomeWatch');
-            log(state.url);
-            return Stack(
-              children: [
-                Webview(
-                  _cubit.controllerWV,
-                ),
-                Column(
-                  children: [
-                    AppBar(
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      leading: IconButton(
-                        onPressed: () async => _cubit.toInfo(),
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                    ),
-                  ],
-                ),
+                        ),
+                      )
+                      .toList(),
+                ])
               ],
             );
           }
@@ -230,6 +186,9 @@ class AnimeItem extends StatelessWidget {
       onTap: () => onTap(),
       child: Container(
         color: Colors.white,
+        constraints: const BoxConstraints(
+          minWidth: 170,
+        ),
         margin: const EdgeInsets.all(10),
         width: (MediaQuery.sizeOf(context).width / 4) - 20,
         height: 300,
@@ -240,7 +199,14 @@ class AnimeItem extends StatelessWidget {
               fit: BoxFit.cover,
               height: 250,
             ),
-            Text(anime.name),
+            Column(
+              children: [
+                AutoSizeText(
+                  anime.name,
+                  maxLines: 3,
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -292,5 +258,10 @@ class InfoEP {
   final String url;
   final String img;
 
-  InfoEP({required this.id, required this.name, required this.url, required this.img});
+  InfoEP({
+    required this.id,
+    required this.name,
+    required this.url,
+    required this.img,
+  });
 }

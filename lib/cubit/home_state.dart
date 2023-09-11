@@ -24,8 +24,8 @@ final class HomeResult extends HomeState {
   HomeResult(this.info);
 }
 
-final class HomeWatch extends HomeState {
-  final String url;
+// final class HomeWatch extends HomeState {
+//   final String url;
 
-  HomeWatch(this.url);
-}
+//   HomeWatch(this.url);
+// }

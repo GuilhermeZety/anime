@@ -4,26 +4,23 @@ import 'package:anime/constants/app_constants.dart';
 import 'package:anime/main.dart';
 import 'package:bloc/bloc.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'package:html/parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_windows/webview_windows.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 part 'home_state.dart';
 
 class HomeCubit extends Cubit<HomeState> {
   HomeCubit() : super(HomeInitial());
   String searched = '';
-  final controllerWV = WebviewController();
   List<Anime> animes = [];
   Anime? anime;
   InfoAnime? info;
   late SharedPreferences prefs;
-
   Dio dio = Dio();
 
   void init() async {
-    controllerWV.initialize();
+    // controllerWV.initialize();
     prefs = await SharedPreferences.getInstance();
   }
 
@@ -31,10 +28,16 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       emit(HomeLoading());
       searched = value;
-      var result = await dio.get('https://www.anitube.vip/busca.php?s=$value&submit=Buscar');
+      var result = await dio.get(
+        'https://www.anitube.vip/busca.php?s=$value&submit=Buscar',
+        options: Options(
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': '*',
+          },
+        ),
+      );
 
-
-      
       var document = parse(result.data);
 
       List<Anime> animes = [];
@@ -70,7 +73,7 @@ class HomeCubit extends Cubit<HomeState> {
   }
 
   void toInfo() {
-    controllerWV.stop();
+    // controllerWV.stop();
     emit(HomeResult(info!));
   }
 
@@ -131,14 +134,13 @@ class HomeCubit extends Cubit<HomeState> {
 
     String qualidade = 'apphd';
 
-    String qualidadeSD = 'appsd';
-    String qualidadeSD2 = 'appsd2';
+    // String qualidadeSD = 'appsd';
+    // String qualidadeSD2 = 'appsd2';
 
-    String qualidadeHD = 'apphd';
-    String qualidadeHD2 = 'apphd2';
-    String qualidadeFullHD = 'appfullhd';
-    String qualidadeFullHD2 = 'appfullhd2';
-    emit(HomeLoading());
+    // String qualidadeHD = 'apphd';
+    // String qualidadeHD2 = 'apphd2';
+    // String qualidadeFullHD = 'appfullhd';
+    // String qualidadeFullHD2 = 'appfullhd2';
     var result = await Dio().get(ep.url);
 
     var document = parse(result.data);
@@ -152,11 +154,13 @@ class HomeCubit extends Cubit<HomeState> {
       url = url.replaceAll('appsd', 'apphd');
     }
 
-    await controllerWV.setBackgroundColor(Colors.transparent);
-    await controllerWV.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
-    await controllerWV.loadUrl('${AppConstants.baseUrl}/playerricas.php?name=$qualidade/.mp4&img=$tmb&url=$url');
-
     log('${AppConstants.baseUrl}/playerricas.php?name=$qualidade/.mp4&img=$tmb&url=$url');
-    emit(HomeWatch('${AppConstants.baseUrl}/playerricas.php?name=$qualidade/.mp4&img=$tmb&url=$url'));
+
+    launchUrl(
+      Uri.parse(
+        '${AppConstants.baseUrl}/playerricas.php?name=$qualidade/.mp4&img=$tmb&url=$url',
+      ),
+      mode: LaunchMode.inAppWebView,
+    );
   }
 }
